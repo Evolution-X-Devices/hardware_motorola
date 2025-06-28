@@ -9,3 +9,12 @@ phony {
         "FrameworksResMotoCommon",
     ]
 }
+
+phony {
+    name: "TurboPowerOverlay",
+    required: [
+        "TurboPowerOverlaySettingsLib",
+        "TurboPowerOverlaySystemUI",
+    ]
+}
+

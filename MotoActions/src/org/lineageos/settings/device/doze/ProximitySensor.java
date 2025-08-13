@@ -22,15 +22,12 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.util.Log;
 
-import java.lang.System;
-
 import com.moto.actions.MotoActionsSettings;
 import com.moto.actions.SensorAction;
 import com.moto.actions.SensorHelper;
 
-public class StowSensor implements ScreenStateNotifier, SensorEventListener {
-    private static final String TAG = "MotoActions-StowSensor";
-    private static final int IN_POCKET_MIN_TIME = 5000;
+public class ProximitySensor implements ScreenStateNotifier, SensorEventListener {
+    private static final String TAG = "MotoActions-ProximitySensor";
 
     private final MotoActionsSettings mMotoActionsSettings;
     private final SensorHelper mSensorHelper;
@@ -38,16 +35,16 @@ public class StowSensor implements ScreenStateNotifier, SensorEventListener {
     private final Sensor mSensor;
 
     private boolean mEnabled;
-    private boolean mLastStowed;
-    private long isStowedTime;
 
-    public StowSensor(MotoActionsSettings motoActionsSettings, SensorHelper sensorHelper,
+    private boolean mSawNear = false;
+
+    public ProximitySensor(MotoActionsSettings motoActionsSettings, SensorHelper sensorHelper,
                 SensorAction action) {
         mMotoActionsSettings = motoActionsSettings;
         mSensorHelper = sensorHelper;
         mSensorAction = action;
 
-        mSensor = sensorHelper.getStowSensor();
+        mSensor = sensorHelper.getProximitySensor();
     }
 
     @Override
@@ -61,8 +58,7 @@ public class StowSensor implements ScreenStateNotifier, SensorEventListener {
 
     @Override
     public void screenTurnedOff() {
-        if (!mMotoActionsSettings.isIrWakeupEnabled() &&
-            mMotoActionsSettings.isPickUpEnabled() && !mEnabled) {
+        if (mMotoActionsSettings.isIrWakeupEnabled() && !mEnabled) {
             Log.d(TAG, "Enabling");
             mSensorHelper.registerListener(mSensor, this);
             mEnabled = true;
@@ -71,21 +67,15 @@ public class StowSensor implements ScreenStateNotifier, SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        boolean thisStowed = (event.values[0] != 0);
-        if(thisStowed){
-            isStowedTime = System.currentTimeMillis();
-        } else if (mLastStowed && !thisStowed) {
-            long inPocketTime = System.currentTimeMillis() - isStowedTime;
-            if(inPocketTime >= IN_POCKET_MIN_TIME){
-                Log.d(TAG, "Triggered after " + inPocketTime / 1000 + " seconds");
-                mSensorAction.action();
-            }
+        boolean isNear = event.values[0] < mSensor.getMaximumRange();
+        if (mSawNear && !isNear) {
+            Log.d(TAG, "wave triggered");
+            mSensorAction.action();
         }
-        mLastStowed = thisStowed;
-        Log.d(TAG, "event: " + thisStowed);
+        mSawNear = isNear;
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    public void onAccuracyChanged(Sensor mSensor, int accuracy) {
     }
 }

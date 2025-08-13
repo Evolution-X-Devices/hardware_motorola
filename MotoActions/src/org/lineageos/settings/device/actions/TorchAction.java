@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 The CyanogenMod Project
- * Copyright (c) 2017-2022 The LineageOS Project
+ * Copyright (c) 2017 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,24 +15,26 @@
  * limitations under the License.
  */
 
-package org.lineageos.settings.device.actions;
+package com.moto.actions.actions;
 
 import android.content.Context;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
-import android.os.VibrationEffect;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraAccessException;
 import android.os.Vibrator;
+import android.util.Log;
 
-import org.lineageos.settings.device.SensorAction;
+import com.moto.actions.SensorAction;
 
 public class TorchAction implements SensorAction {
-    private static boolean mTorchEnabled;
+    private static final String TAG = "MotoActions";
 
-    private final CameraManager mCameraManager;
+    private static final int TURN_SCREEN_ON_WAKE_LOCK_MS = 500;
+
+    private CameraManager mCameraManager;
     private final Vibrator mVibrator;
-
     private String mRearCameraId;
+    private static boolean mTorchEnabled;
 
     public TorchAction(Context mContext) {
         mCameraManager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
@@ -48,18 +50,18 @@ public class TorchAction implements SensorAction {
                     break;
                 }
             }
-        } catch (CameraAccessException ignored) {
+        } catch (CameraAccessException e) {
         }
     }
 
     @Override
     public void action() {
-        mVibrator.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE));
+        mVibrator.vibrate(250);
         if (mRearCameraId != null) {
             try {
                 mCameraManager.setTorchMode(mRearCameraId, !mTorchEnabled);
                 mTorchEnabled = !mTorchEnabled;
-            } catch (CameraAccessException ignored) {
+            } catch (CameraAccessException e) {
             }
         }
     }
@@ -68,17 +70,15 @@ public class TorchAction implements SensorAction {
 
         @Override
         public void onTorchModeChanged(String cameraId, boolean enabled) {
-            if (!cameraId.equals(mRearCameraId)) {
+            if (!cameraId.equals(mRearCameraId))
                 return;
-            }
             mTorchEnabled = enabled;
         }
 
         @Override
         public void onTorchModeUnavailable(String cameraId) {
-            if (!cameraId.equals(mRearCameraId)) {
+            if (!cameraId.equals(mRearCameraId))
                 return;
-            }
             mTorchEnabled = false;
         }
     }

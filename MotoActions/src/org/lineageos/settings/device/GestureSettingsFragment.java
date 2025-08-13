@@ -17,17 +17,18 @@
 package com.moto.actions;
 
 import android.os.Bundle;
+import androidx.preference.PreferenceFragment;
 
-import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
-
-public class ActionsPreferenceActivity extends CollapsingToolbarBaseActivity {
+public class GestureSettingsFragment extends PreferenceFragment {
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (savedInstanceState == null){
-            getFragmentManager().beginTransaction()
-	            .replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame, new ActionsPreferenceFragment()).commit();
-        }
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
     }
+
+    @Override
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        addPreferencesFromResource(R.xml.actions_panel);
+    }
+
 }

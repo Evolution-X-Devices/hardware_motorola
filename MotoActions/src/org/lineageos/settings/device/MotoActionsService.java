@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 The CyanogenMod Project
- * Copyright (c) 2017-2022 The LineageOS Project
+ * Copyright (c) 2017 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,84 +15,85 @@
  * limitations under the License.
  */
 
-package org.lineageos.settings.device;
+package com.moto.actions;
 
-import android.app.Service;
-import android.content.BroadcastReceiver;
+import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.IBinder;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 
-import org.lineageos.settings.device.actions.ChopChopSensor;
-import org.lineageos.settings.device.actions.FlipToMute;
-import org.lineageos.settings.device.actions.LiftToSilence;
-import org.lineageos.settings.device.actions.ProximitySilencer;
-import org.lineageos.settings.device.actions.UpdatedStateNotifier;
-import org.lineageos.settings.device.doze.DozePulseAction;
-import org.lineageos.settings.device.doze.FlatUpSensor;
-import org.lineageos.settings.device.doze.ScreenStateNotifier;
-import org.lineageos.settings.device.doze.StowSensor;
-
-import java.util.LinkedList;
 import java.util.List;
+import java.util.LinkedList;
 
-public class MotoActionsService extends Service implements ScreenStateNotifier,
+import com.moto.actions.actions.UpdatedStateNotifier;
+import com.moto.actions.actions.ChopChopSensor;
+import com.moto.actions.actions.FlipToMute;
+import com.moto.actions.actions.LiftToSilence;
+import com.moto.actions.actions.ProximitySilencer;
+
+import com.moto.actions.doze.DozePulseAction;
+import com.moto.actions.doze.GlanceSensor;
+import com.moto.actions.doze.ProximitySensor;
+import com.moto.actions.doze.ScreenReceiver;
+import com.moto.actions.doze.ScreenStateNotifier;
+import com.moto.actions.doze.StowSensor;
+
+public class MotoActionsService extends IntentService implements ScreenStateNotifier,
         UpdatedStateNotifier {
     private static final String TAG = "MotoActions";
 
-    private final List<ScreenStateNotifier> mScreenStateNotifiers = new LinkedList<>();
-    private final List<UpdatedStateNotifier> mUpdatedStateNotifiers = new LinkedList<>();
+    private final Context mContext;
 
-    private PowerManager mPowerManager;
-    private PowerManager.WakeLock mWakeLock;
+    private final DozePulseAction mDozePulseAction;
+    private final PowerManager mPowerManager;
+    private final PowerManager.WakeLock mWakeLock;
+    private final ScreenReceiver mScreenReceiver;
+    private final SensorHelper mSensorHelper;
 
-    public void onCreate() {
+    private final List<ScreenStateNotifier> mScreenStateNotifiers = new LinkedList<ScreenStateNotifier>();
+    private final List<UpdatedStateNotifier> mUpdatedStateNotifiers =
+                        new LinkedList<UpdatedStateNotifier>();
+
+    public MotoActionsService(Context context) {
+        super("MotoActionService");
+        mContext = context;
+
         Log.d(TAG, "Starting");
 
-        MotoActionsSettings actionsSettings = new MotoActionsSettings(this, this);
-        SensorHelper sensorHelper = new SensorHelper(this);
-        DozePulseAction dozePulseAction = new DozePulseAction(this);
+        MotoActionsSettings motoActionsSettings = new MotoActionsSettings(context, this);
+        mSensorHelper = new SensorHelper(context);
+        mScreenReceiver = new ScreenReceiver(context, this);
 
-        mScreenStateNotifiers.add(dozePulseAction);
+        mDozePulseAction = new DozePulseAction(context);
+        mScreenStateNotifiers.add(mDozePulseAction);
 
         // Actionable sensors get screen on/off notifications
-        mScreenStateNotifiers.add(new StowSensor(actionsSettings, sensorHelper, dozePulseAction));
-        mScreenStateNotifiers.add(new FlatUpSensor(actionsSettings, sensorHelper, dozePulseAction));
+        //mScreenStateNotifiers.add(new GlanceSensor(motoActionsSettings, mSensorHelper, mDozePulseAction));
+        mScreenStateNotifiers.add(new ProximitySensor(motoActionsSettings, mSensorHelper, mDozePulseAction));
+        mScreenStateNotifiers.add(new StowSensor(motoActionsSettings, mSensorHelper, mDozePulseAction));
 
         // Other actions that are always enabled
-        mUpdatedStateNotifiers.add(new ChopChopSensor(actionsSettings, sensorHelper));
-        mUpdatedStateNotifiers.add(new ProximitySilencer(actionsSettings, this, sensorHelper));
-        mUpdatedStateNotifiers.add(new FlipToMute(actionsSettings, this, sensorHelper));
-        mUpdatedStateNotifiers.add(new LiftToSilence(actionsSettings, this, sensorHelper));
+        mUpdatedStateNotifiers.add(new ChopChopSensor(motoActionsSettings, mSensorHelper));
+        mUpdatedStateNotifiers.add(new ProximitySilencer(motoActionsSettings, context, mSensorHelper));
+        mUpdatedStateNotifiers.add(new FlipToMute(motoActionsSettings, context, mSensorHelper));
+        mUpdatedStateNotifiers.add(new LiftToSilence(motoActionsSettings, context, mSensorHelper));
 
-        mPowerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                TAG + ":WakeLock");
-
-        IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(mScreenStateReceiver, filter);
-
+        mPowerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MotoActionsWakeLock");
         updateState();
     }
 
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
-    }
-
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+    protected void onHandleIntent(Intent intent) {
     }
 
     @Override
     public void screenTurnedOn() {
-        if (!mWakeLock.isHeld()) {
-            mWakeLock.acquire();
-        }
+            if (!mWakeLock.isHeld()) {
+                mWakeLock.acquire();
+            }
         for (ScreenStateNotifier screenStateNotifier : mScreenStateNotifiers) {
             screenStateNotifier.screenTurnedOn();
         }
@@ -100,9 +101,9 @@ public class MotoActionsService extends Service implements ScreenStateNotifier,
 
     @Override
     public void screenTurnedOff() {
-        if (mWakeLock.isHeld()) {
-            mWakeLock.release();
-        }
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
         for (ScreenStateNotifier screenStateNotifier : mScreenStateNotifiers) {
             screenStateNotifier.screenTurnedOff();
         }
@@ -118,15 +119,4 @@ public class MotoActionsService extends Service implements ScreenStateNotifier,
             notifier.updateState();
         }
     }
-
-    private final BroadcastReceiver mScreenStateReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
-                screenTurnedOff();
-            } else if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
-                screenTurnedOn();
-            }
-        }
-    };
 }

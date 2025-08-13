@@ -15,14 +15,13 @@
  * limitations under the License.
  */
 
-package org.lineageos.settings.device.doze;
+package com.moto.actions.doze;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.UserHandle;
 import android.util.Log;
 
-import org.lineageos.settings.device.SensorAction;
+import com.moto.actions.SensorAction;
 
 public class DozePulseAction implements SensorAction, ScreenStateNotifier {
     private static final String TAG = "MotoActions";
@@ -47,10 +46,9 @@ public class DozePulseAction implements SensorAction, ScreenStateNotifier {
     }
 
     public void action() {
-        if (mayDoze()) {
+         if (mayDoze()) {
             Log.d(TAG, "Sending doze.pulse intent");
-            Intent pulseIntent = new Intent("com.android.systemui.doze.pulse");
-            mContext.sendBroadcastAsUser(pulseIntent, UserHandle.CURRENT);
+            mContext.sendBroadcast(new Intent("com.android.systemui.doze.pulse"));
         }
     }
 

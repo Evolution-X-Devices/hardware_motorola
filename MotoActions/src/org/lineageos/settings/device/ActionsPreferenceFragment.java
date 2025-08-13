@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2016 The CyanogenMod Project
- * Copyright (C) 2017-2022 The LineageOS Project
+ * Copyright (C) 2017 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,29 +15,50 @@
  * limitations under the License.
  */
 
-package org.lineageos.settings.device;
+package com.moto.actions;
 
 import android.os.Bundle;
-import android.view.MenuItem;
-
-import androidx.preference.PreferenceCategory;
+import android.os.SystemProperties;
+import androidx.preference.Preference;
 import androidx.preference.PreferenceFragment;
+
+import static com.moto.actions.Constants.*;
 
 public class ActionsPreferenceFragment extends PreferenceFragment {
 
-    private static final String KEY_ACTIONS_CATEGORY = "actions_key";
-
     @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        addPreferencesFromResource(R.xml.actions_panel);
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            getActivity().onBackPressed();
-            return true;
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        addPreferencesFromResource(R.xml.main_panel);
+
+        if (!getResources().getBoolean(R.bool.config_device_support_assistant_key)) {
+            Preference pref = getPreferenceScreen().findPreference(ASSISTANT_KEY);
+            if (pref != null) {
+                getPreferenceScreen().removePreference(pref);
+            }
         }
-        return false;
+
+        if (!getResources().getBoolean(R.bool.config_device_support_fingerprint_gestures)) {
+            Preference pref = getPreferenceScreen().findPreference(FP_GESTURES_KEY);
+            if (pref != null) {
+                getPreferenceScreen().removePreference(pref);
+            }
+        }
+
+         try {
+            String deviceProp = SystemProperties.get("ro.product.product.device", "sofia");
+            if (!deviceProp.contains("sofiap")) {
+                Preference pref = getPreferenceScreen().findPreference("stylus");
+                if (pref != null) {
+                    getPreferenceScreen().removePreference(pref);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

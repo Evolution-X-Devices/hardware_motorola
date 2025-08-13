@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2015-2016 The CyanogenMod Project
- *               2017-2024 The LineageOS Project
+ * Copyright (c) 2016 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +14,21 @@
  * limitations under the License.
  */
 
-package org.lineageos.settings.device;
+package com.moto.actions;
 
 import android.os.Bundle;
 
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 
-public class DozePreferenceActivity extends CollapsingToolbarBaseActivity {
-
-    private static final String TAG_DOZE = "doze";
+public class GestureSettingsActivity extends CollapsingToolbarBaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getFragmentManager()
-                .beginTransaction()
+        if (savedInstanceState == null){
+            getFragmentManager().beginTransaction()
                 .replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame,
-                        new DozePreferenceFragment(), TAG_DOZE)
-                .commit();
+                new GestureSettingsFragment()).commit();
+        }
     }
 }
